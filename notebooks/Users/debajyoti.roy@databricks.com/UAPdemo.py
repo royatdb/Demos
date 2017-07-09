@@ -132,7 +132,13 @@ model.write().overwrite().save("/mnt/roy/amazon-model")
 
 # COMMAND ----------
 
-# MAGIC %fs ls dbfs:/mnt/roy/amazon-model/stages/
+# MAGIC %fs ls dbfs:/mnt/roy/amazon-model/stages
+
+# COMMAND ----------
+
+# MAGIC %scala 
+# MAGIC val modelDir = dbutils.fs.ls("/mnt/roy/amazon-model/stages/").last.path
+# MAGIC display(spark.read.parquet(modelDir+"/data"))
 
 # COMMAND ----------
 
