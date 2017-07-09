@@ -2,7 +2,7 @@
 # MAGIC %md 
 # MAGIC # Toy Analytics Use case
 # MAGIC * Explore a dataset and Train a ML model
-# MAGIC * Deploy the trained ML Model above to evaluate live data
+# MAGIC * Deploy the trained ML Model and make Predictions on live data
 # MAGIC 
 # MAGIC _Date: 7/10/2017_
 
