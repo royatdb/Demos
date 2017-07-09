@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md 
-# MAGIC # Toy Analytics usecase
+# MAGIC # Toy Analytics Use case
 # MAGIC * Explore a dataset and Train a ML model
 # MAGIC * Deploy the trained ML Model above to evaluate live data
 # MAGIC 
