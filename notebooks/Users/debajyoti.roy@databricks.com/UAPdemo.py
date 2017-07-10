@@ -111,7 +111,11 @@ display(lrModel, preppedData, "ROC")
 
 # COMMAND ----------
 
-# MAGIC %md #Manual Tuning
+# MAGIC %md #Model Tuning
+
+# COMMAND ----------
+
+print lr.explainParams()
 
 # COMMAND ----------
 
@@ -124,7 +128,7 @@ print "AUC %(result)s" % {"result": BinaryClassificationEvaluator().evaluate(res
 
 # COMMAND ----------
 
-# MAGIC %md #Model Governance
+# MAGIC %md #Model Deployment
 
 # COMMAND ----------
 
@@ -156,8 +160,13 @@ model.write().overwrite().save("/mnt/roy/amazon-model")
 
 # COMMAND ----------
 
+# MAGIC %fs rm -r /mnt/roy/uapdemo/amazon-stream-input/
+
+# COMMAND ----------
+
 # MAGIC %scala
-# MAGIC val testData = spark.sql("select * from amazon where time > ((select max(time) from amazon) - 86400)")
+# MAGIC val testData = spark.sql("select * from amazon where time > ((select max(time) from amazon) - 14*24*60*60)")
+# MAGIC println(s"Rows writen: ${testData.count()}")
 # MAGIC testData.coalesce(48).write.json("/mnt/roy/uapdemo/amazon-stream-input")
 
 # COMMAND ----------
@@ -199,7 +208,7 @@ model.write().overwrite().save("/mnt/roy/amazon-model")
 
 # COMMAND ----------
 
-# MAGIC %sql select rating, label, prediction, probability, review from stream order by review
+# MAGIC %sql select * from stream
 
 # COMMAND ----------
 
@@ -208,7 +217,21 @@ model.write().overwrite().save("/mnt/roy/amazon-model")
 # COMMAND ----------
 
 # MAGIC %scala
-# MAGIC display(scoredStream.groupBy("prediction", "label").count())
+# MAGIC import org.apache.spark.sql.functions._
+# MAGIC val time = (text: String) => {
+# MAGIC   new java.sql.Timestamp(text.toLong*1000)
+# MAGIC }
+# MAGIC val timeUdf = udf(time)
+# MAGIC 
+# MAGIC val isMatch = (pred: Double, label: Double) => if(label==pred) "yes" else "no"
+# MAGIC val isMatchUdf = udf(isMatch)
+# MAGIC 
+# MAGIC display(scoredStream
+# MAGIC   .withColumn("time_col", timeUdf($"time") )
+# MAGIC   .withColumn("is_match", isMatchUdf($"prediction", $"label") )
+# MAGIC   .groupBy($"is_match", window($"time_col", "1 week"))
+# MAGIC   .count()
+# MAGIC )
 
 # COMMAND ----------
 
