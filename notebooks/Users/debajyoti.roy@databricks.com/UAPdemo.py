@@ -12,6 +12,10 @@
 
 # COMMAND ----------
 
+# MAGIC %fs ls /databricks-datasets/amazon/data20K
+
+# COMMAND ----------
+
 data = spark.read.parquet("/databricks-datasets/amazon/data20K")
 data.createOrReplaceTempView("reviews")
 display(data)
@@ -86,6 +90,10 @@ model.stages[-1].summary.areaUnderROC
 # COMMAND ----------
 
 result = model.transform(test)
+
+# COMMAND ----------
+
+display(result)
 
 # COMMAND ----------
 
@@ -229,9 +237,14 @@ model.write().overwrite().save("/mnt/roy/amazon-model")
 # MAGIC display(scoredStream
 # MAGIC   .withColumn("time_col", timeUdf($"time") )
 # MAGIC   .withColumn("is_match", isMatchUdf($"prediction", $"label") )
-# MAGIC   .groupBy($"is_match", window($"time_col", "1 week"))
+# MAGIC   .groupBy($"is_match", window($"time_col", "1 day"))
 # MAGIC   .count()
 # MAGIC )
+
+# COMMAND ----------
+
+# MAGIC %md #TL;DR 
+# MAGIC ![ml](https://s3.us-east-2.amazonaws.com/databricks-roy/MLDB.jpeg)
 
 # COMMAND ----------
 
