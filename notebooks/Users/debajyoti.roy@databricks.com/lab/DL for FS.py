@@ -57,6 +57,11 @@ dist_df.write.format("parquet").mode("overwrite").saveAsTable("roy.stocks")
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC # JPM daily close prices for 2016
+
+# COMMAND ----------
+
 df=spark.table("roy.stocks").select("Date", "Close").filter(F.year('Date')==2016 )
 display(df)
 
@@ -66,6 +71,11 @@ pdf = df.toPandas()
 pdf['Date'] = pdf['Date'].astype('datetime64[ns]')
 pdf = pdf.set_index('Date')
 ts = pdf['Close']
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # Forecast using ARIMA
 
 # COMMAND ----------
 
@@ -127,12 +137,12 @@ for t in range(len(test)):
     history.append(obs)
     print('predicted=%f, expected=%f' % (np.exp(yhat), np.exp(obs)))
 
-error = mean_squared_error(np.exp(test), np.exp(predictions))
+arima_mse = mean_squared_error(np.exp(test), np.exp(predictions))
 
 # COMMAND ----------
 
 print('\n')
-print('Test MSE: %.6f' % error)
+print('Test MSE: %.6f' % arima_mse)
 
 predictions_series = pd.Series(predictions, index = test.index)
 
@@ -145,6 +155,11 @@ ax.plot(np.exp(predictions_series), 'g', label='forecast')
 legend = ax.legend(loc='upper left')
 legend.get_frame().set_facecolor('w')
 display(fig)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # Forecast using LSTM
 
 # COMMAND ----------
 
@@ -211,9 +226,9 @@ df.loc[:, 'Pred'] = sc.inverse_transform(df.loc[:, 'Pred'])
 # COMMAND ----------
 
 test_df = df.loc[df.index >= pd.to_datetime('2016-10-01')]
-mse = mean_squared_error(y_true=test_df.Close, y_pred=test_df.Pred)
+lstm_mse = mean_squared_error(y_true=test_df.Close, y_pred=test_df.Pred)
 print('\n')
-print('Test MSE: %.6f' % mse)
+print('Test MSE: %.6f' % lstm_mse)
 
 # COMMAND ----------
 
@@ -223,6 +238,24 @@ ax.plot(test_df.Close, 'o', label='observed')
 ax.plot(test_df.Pred, 'g', label='forecast')
 legend = ax.legend(loc='upper left')
 legend.get_frame().set_facecolor('w')
+display(fig)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # Compare MSE
+
+# COMMAND ----------
+
+fig, ax = plt.subplots()
+objects = ('ARIMA', 'LSTM')
+y_pos = np.arange(len(objects))
+performance = [arima_mse,lstm_mse]
+ 
+plt.bar(y_pos, performance, align='center', alpha=0.5)
+plt.xticks(y_pos, objects)
+plt.ylabel('MSE')
+plt.title('Mean Squared Errors')
 display(fig)
 
 # COMMAND ----------
