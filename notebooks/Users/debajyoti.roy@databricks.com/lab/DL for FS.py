@@ -1,21 +1,13 @@
 # Databricks notebook source
 dbutils.widgets.removeAll()
-dbutils.widgets.dropdown("Year", "2016", [str(x) for x in range(1983, 2018)])
+dbutils.widgets.dropdown("Ticker Symbol", "GS", ["JPM", "GS"])
+dbutils.widgets.dropdown("Year", "2016", [str(x) for x in range(1990, 2018)])
 dbutils.widgets.dropdown("Train/Test Split Month", "10", [str(x) for x in range(1, 13)])
+widget_symbol = str(dbutils.widgets.get("Ticker Symbol"))
 widget_year = int(dbutils.widgets.get("Year"))
 widget_month = int(dbutils.widgets.get("Train/Test Split Month"))
 split_dt_str = str(widget_year)+'-'+str(widget_month)+'-01'
-
-# COMMAND ----------
-
-# MAGIC %sh
-# MAGIC pip install tables
-# MAGIC pip install tensorflow
-# MAGIC pip install keras
-# MAGIC pip install np_utils
-# MAGIC pip install protobuf
-# MAGIC pip install google
-# MAGIC pip install quandl
+widget_symbol
 
 # COMMAND ----------
 
@@ -23,27 +15,36 @@ import pandas as pd
 from pandas import DataFrame
 import numpy as np
 from datetime import datetime
+
+import quandl
+from pyspark.sql import functions as F
+
+from statsmodels.tsa.arima_model import ARIMA
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
+
+from keras.layers.core import Dense, Activation, Dropout
+from keras.layers import Convolution1D, MaxPooling1D, Flatten,  Embedding
+from keras.layers import Conv1D, GlobalMaxPooling1D
+from keras.layers.recurrent import LSTM
+from keras.models import Sequential
+
+#from sparkdl import KerasTransformer
+
 import matplotlib.pyplot as plt
 from matplotlib.pylab import rcParams
 rcParams['figure.figsize'] = 15, 6
 
 # COMMAND ----------
 
-import quandl
-
-quandl.ApiConfig.api_key = "Yq-SnrCnvJMWUHdrXuyZ"
-
-# COMMAND ----------
-
-raw_df = quandl.get("EOD/JPM", collapse="daily", start_date="1983-12-3", end_date="2017-12-13")
+quandl.ApiConfig.api_key = "WH6t_pYm1wwY2rZYcYya"
+raw_df = quandl.get("EOD/"+widget_symbol, collapse="daily", start_date="1990-01-01", end_date="2017-12-01")
 
 # COMMAND ----------
 
 raw_df['Date'] = raw_df.index.strftime("%Y-%m-%d")
 
 # COMMAND ----------
-
-from pyspark.sql import functions as F
 
 dist_df = spark.createDataFrame(raw_df)
 dist_df = dist_df.withColumn('Date', F.to_date(F.from_unixtime(F.unix_timestamp(dist_df.Date, 'yyyy-MM-dd'))))
@@ -67,11 +68,11 @@ dist_df.write.format("parquet").mode("overwrite").saveAsTable("roy.stocks")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC # JPM daily close prices
+# MAGIC # Daily close prices for 1 Year
 
 # COMMAND ----------
 
-df=spark.table("roy.stocks").select("Date", "Close").filter(F.year('Date')==widget_year )
+df=spark.table("roy.stocks").select("Date", "Close").filter(F.year('Date')==widget_year ).orderBy('Date')
 display(df)
 
 # COMMAND ----------
@@ -91,12 +92,6 @@ ts = pdf['Close']
 ts_week = ts.resample('W').mean()
 ts_week_log = np.log(ts_week)
 ts_week_log_diff = ts_week_log - ts_week_log.shift()
-
-# COMMAND ----------
-
-from statsmodels.tsa.arima_model import ARIMA
-from statsmodels.tsa.seasonal import seasonal_decompose
-from sklearn.metrics import mean_squared_error
 
 # COMMAND ----------
 
@@ -169,15 +164,6 @@ display(fig)
 
 # MAGIC %md
 # MAGIC # Forecast using LSTM
-
-# COMMAND ----------
-
-from keras.layers.core import Dense, Activation, Dropout
-from keras.layers import Convolution1D, MaxPooling1D, Flatten,  Embedding
-from keras.layers import Conv1D, GlobalMaxPooling1D
-from keras.layers.recurrent import LSTM
-from keras.models import Sequential
-from sklearn.preprocessing import StandardScaler
 
 # COMMAND ----------
 
