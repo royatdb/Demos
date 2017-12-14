@@ -1,4 +1,13 @@
 # Databricks notebook source
+dbutils.widgets.removeAll()
+dbutils.widgets.dropdown("Year", "2016", [str(x) for x in range(1983, 2018)])
+dbutils.widgets.dropdown("Train/Test Split Month", "10", [str(x) for x in range(1, 13)])
+widget_year = int(dbutils.widgets.get("Year"))
+widget_month = int(dbutils.widgets.get("Train/Test Split Month"))
+split_dt_str = str(widget_year)+'-'+str(widget_month)+'-01'
+
+# COMMAND ----------
+
 # MAGIC %sh
 # MAGIC pip install tables
 # MAGIC pip install tensorflow
@@ -58,11 +67,11 @@ dist_df.write.format("parquet").mode("overwrite").saveAsTable("roy.stocks")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC # JPM daily close prices for 2016
+# MAGIC # JPM daily close prices
 
 # COMMAND ----------
 
-df=spark.table("roy.stocks").select("Date", "Close").filter(F.year('Date')==2016 )
+df=spark.table("roy.stocks").select("Date", "Close").filter(F.year('Date')==widget_year )
 display(df)
 
 # COMMAND ----------
@@ -119,8 +128,8 @@ predictions_ARIMA = np.exp(predictions_ARIMA_log)
 # COMMAND ----------
 
 size = int(len(ts_week_log) - 15)
-train = ts_week_log.loc[ts_week_log.index < pd.to_datetime('2016-10-01')]
-test = ts_week_log.loc[ts_week_log.index >= pd.to_datetime('2016-10-01')]
+train = ts_week_log.loc[ts_week_log.index < pd.to_datetime(split_dt_str)]
+test = ts_week_log.loc[ts_week_log.index >= pd.to_datetime(split_dt_str)]
 train, test = ts_week_log[0:size], ts_week_log[size:len(ts_week_log)]
 history = [x for x in train]
 predictions = list()
@@ -150,7 +159,7 @@ predictions_series = pd.Series(predictions, index = test.index)
 
 fig, ax = plt.subplots()
 ax.set(title='ARIMA Predictions for Test', xlabel='Date', ylabel='Close')
-ax.plot(ts.loc[ts.index >= pd.to_datetime('2016-10-01')], 'o', label='observed')
+ax.plot(ts.loc[ts.index >= pd.to_datetime(split_dt_str)], 'o', label='observed')
 ax.plot(np.exp(predictions_series), 'g', label='forecast')
 legend = ax.legend(loc='upper left')
 legend.get_frame().set_facecolor('w')
@@ -182,8 +191,8 @@ look_back = 12
 sc = StandardScaler()
 df.loc[:, 'Close'] = sc.fit_transform(df.loc[:, 'Close'])
 
-train_df = df.loc[df.index < pd.to_datetime('2016-10-01')]
-test_df = df.loc[df.index >= pd.to_datetime('2016-10-01')]
+train_df = df.loc[df.index < pd.to_datetime(split_dt_str)]
+test_df = df.loc[df.index >= pd.to_datetime(split_dt_str)]
 
 timeseries = np.asarray(df.Close)
 timeseries = np.atleast_2d(timeseries)
@@ -225,7 +234,7 @@ df.loc[:, 'Pred'] = sc.inverse_transform(df.loc[:, 'Pred'])
 
 # COMMAND ----------
 
-test_df = df.loc[df.index >= pd.to_datetime('2016-10-01')]
+test_df = df.loc[df.index >= pd.to_datetime(split_dt_str)]
 lstm_mse = mean_squared_error(y_true=test_df.Close, y_pred=test_df.Pred)
 print('\n')
 print('Test MSE: %.6f' % lstm_mse)
